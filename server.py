@@ -6,6 +6,7 @@ from asyncio import transports
 
 
 login_list = []
+history = []
 
 
 class ClientProtocol(asyncio.Protocol):
@@ -31,6 +32,7 @@ class ClientProtocol(asyncio.Protocol):
                     self.transport.write(
                         f"Привет, {self.login}!".encode()
                     )
+                    self.send_history()
                 else:
                     self.transport.write(
                         f"Логин {self.login} занят, попробуйте другой".encode()
@@ -47,11 +49,23 @@ class ClientProtocol(asyncio.Protocol):
 
     def send_message(self, message):
         format_string = f"<{self.login}>: {message}"
+        history.append(format_string)
         encoded = format_string.encode()
 
         for client in self.server.clients:
             if client.login != self.login:
                 client.transport.write(encoded)
+
+    def send_history(self):
+        history_str = "History:\n"
+        for mes in history[-11:]:
+             history_str += str(mes)
+             history_str += "\n"
+        encoded_mes = history_str.encode()
+
+        for client in self.server.clients:
+            if client.login == self.login:
+                client.transport.write(encoded_mes)
 
     def connection_made(self, transport: transports.Transport):
         self.transport = transport

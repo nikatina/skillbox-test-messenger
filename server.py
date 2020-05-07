@@ -70,7 +70,8 @@ class ClientProtocol(asyncio.Protocol):
         print("Соединение установлено")
 
     def connection_lost(self, exception):
-        self.server.clients.remove(self)
+        if self in self.server.clients:
+            self.server.clients.remove(self)
         print("Соединение разорвано")
         if self.login in self.server.logins:
             self.server.logins.remove(self.login)

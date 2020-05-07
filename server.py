@@ -5,10 +5,6 @@ import asyncio
 from asyncio import transports
 
 
-login_list = []
-history = []
-
-
 class ClientProtocol(asyncio.Protocol):
     login: str
     server: 'Server'
@@ -27,13 +23,14 @@ class ClientProtocol(asyncio.Protocol):
             # login:User
             if decoded.startswith("login:"):
                 self.login = decoded.replace("login:", "").replace("\r\n", "")
-                if self.login not in login_list:
-                    login_list.append(self.login)
+                if self.login not in self.server.logins:
+                    self.server.logins.append(self.login)
                     self.transport.write(
                         f"Привет, {self.login}!".encode()
                     )
                     self.send_history()
                 else:
+                    self.server.logins.append(self.login)
                     self.transport.write(
                         f"Логин {self.login} занят, попробуйте другой".encode()
                     )
@@ -49,7 +46,7 @@ class ClientProtocol(asyncio.Protocol):
 
     def send_message(self, message):
         format_string = f"<{self.login}>: {message}"
-        history.append(format_string)
+        self.server.history.append(format_string)
         encoded = format_string.encode()
 
         for client in self.server.clients:
@@ -58,7 +55,7 @@ class ClientProtocol(asyncio.Protocol):
 
     def send_history(self):
         history_str = "History:\n"
-        for mes in history[-11:]:
+        for mes in self.server.history[-10:]:
              history_str += str(mes)
              history_str += "\n"
         encoded_mes = history_str.encode()
@@ -74,15 +71,20 @@ class ClientProtocol(asyncio.Protocol):
 
     def connection_lost(self, exception):
         self.server.clients.remove(self)
-        login_list.remove(self.login)
         print("Соединение разорвано")
+        if self.login in self.server.logins:
+            self.server.logins.remove(self.login)
 
 
 class Server:
     clients: list
+    logins: list
+    history: list
 
     def __init__(self):
         self.clients = []
+        self.logins = []
+        self.history = []
 
     def create_protocol(self):
         return ClientProtocol(self)

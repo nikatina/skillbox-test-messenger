@@ -38,7 +38,8 @@ class ClientProtocol(asyncio.Protocol):
                     )
                     self.transport.close()
                     self.server.clients.remove(self)
-                    print("Попытка подключения пользователя с существующим логином")
+                    print(f"Попытка подключения пользователя с существующим логином <{self.login}>")
+                    self.login = f"{self.login}-duplicate"
 
             else:
                 self.transport.write(
@@ -57,25 +58,26 @@ class ClientProtocol(asyncio.Protocol):
             client.transport.write(encoded)
 
     def send_history(self):
-        history_str = "History:\n"
-        for mes in self.server.history[-10:]:
-             history_str += str(mes)
-             history_str += "\n"
-        encoded_mes = history_str.encode()
+        if len(self.server.history) > 0:
+            history_str = "History:\n"
+            for mes in self.server.history[-10:]:
+                 history_str += str(mes)
+                 history_str += "\n"
+        else:
+            history_str = "History is empty\n"
 
-        for client in self.server.clients:
-            if client.login == self.login:
-                client.transport.write(encoded_mes)
+        encoded_mes = history_str.encode()
+        self.transport.write(encoded_mes)
 
     def connection_made(self, transport: transports.Transport):
         self.transport = transport
         self.server.clients.append(self)
-        print("Пришел новый клиент")
+        print(f"Пришел новый клиент <{self.login}>")
 
     def connection_lost(self, exception):
         if self in self.server.clients:
             self.server.clients.remove(self)
-        print("Клиент вышел")
+        print(f"Клиент вышел <{self.login}>")
 
 
 class Server:

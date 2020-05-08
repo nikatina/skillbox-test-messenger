@@ -15,6 +15,7 @@ class ClientProtocol(asyncio.Protocol):
         self.login = None
 
     def data_received(self, data: bytes):
+        count = 0
 
         decoded = data.decode()
         print(decoded)
@@ -23,22 +24,25 @@ class ClientProtocol(asyncio.Protocol):
             # login:User
             if decoded.startswith("login:"):
                 self.login = decoded.replace("login:", "").replace("\r\n", "")
-                if self.login not in self.server.logins:
-                    self.server.logins.append(self.login)
+                for client in self.server.clients:
+                    if self.login == client.login:
+                        count += 1
+                if count == 1:
                     self.transport.write(
                         f"Привет, {self.login}!".encode()
                     )
                     self.send_history()
                 else:
-                    self.server.logins.append(self.login)
                     self.transport.write(
                         f"Логин {self.login} занят, попробуйте другой".encode()
                     )
+                    self.transport.close()
                     self.server.clients.remove(self)
                     print("Попытка подключения пользователя с существующим логином")
+
             else:
                 self.transport.write(
-                    f"Введите логин!".encode()
+                    f"Неправильный логин!\n".encode()
                 )
 
         else:
@@ -50,8 +54,7 @@ class ClientProtocol(asyncio.Protocol):
         encoded = format_string.encode()
 
         for client in self.server.clients:
-            if client.login != self.login:
-                client.transport.write(encoded)
+            client.transport.write(encoded)
 
     def send_history(self):
         history_str = "History:\n"
@@ -67,24 +70,20 @@ class ClientProtocol(asyncio.Protocol):
     def connection_made(self, transport: transports.Transport):
         self.transport = transport
         self.server.clients.append(self)
-        print("Соединение установлено")
+        print("Пришел новый клиент")
 
     def connection_lost(self, exception):
         if self in self.server.clients:
             self.server.clients.remove(self)
-        print("Соединение разорвано")
-        if self.login in self.server.logins:
-            self.server.logins.remove(self.login)
+        print("Клиент вышел")
 
 
 class Server:
     clients: list
-    logins: list
     history: list
 
     def __init__(self):
         self.clients = []
-        self.logins = []
         self.history = []
 
     def create_protocol(self):

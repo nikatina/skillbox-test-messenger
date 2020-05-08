@@ -39,7 +39,6 @@ class ClientProtocol(asyncio.Protocol):
                     self.transport.close()
                     self.server.clients.remove(self)
                     print(f"Попытка подключения пользователя с существующим логином <{self.login}>")
-                    self.login = f"{self.login}-duplicate"
 
             else:
                 self.transport.write(
@@ -72,12 +71,12 @@ class ClientProtocol(asyncio.Protocol):
     def connection_made(self, transport: transports.Transport):
         self.transport = transport
         self.server.clients.append(self)
-        print(f"Пришел новый клиент <{self.login}>")
+        print(f"Пришел новый клиент")
 
     def connection_lost(self, exception):
         if self in self.server.clients:
             self.server.clients.remove(self)
-        print(f"Клиент вышел <{self.login}>")
+        print(f"Клиент вышел")
 
 
 class Server:
